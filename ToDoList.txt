@@ -1,0 +1,10 @@
+
+
+Wednesday
+- Create a simple hello world program
+- 
+- Create the CMake framework
+- 
+
+
+
