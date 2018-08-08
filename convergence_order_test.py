@@ -41,7 +41,7 @@ def test_convergence_orders():
 				raise ValueError("Unkown REFINEMENT_TYPE")
 
 			# Run the simulation
-			simulation.main()
+			simulation.simulate()
 
 
 if __name__ == "__main__":

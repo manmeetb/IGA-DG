@@ -71,6 +71,10 @@ class Patch(object):
 		self.M_J_inv = numpy.linalg.inv(self.M_J_inv)
 
 
+		# Global solve Data structures
+		self.N_k, self.P_kMin1 = self.set_global_solve_matrices()
+
+
 	def set_initial_condition(self, function_ic):
 
 		"""
@@ -211,6 +215,52 @@ class Patch(object):
 
 		# face_index = 0 (left) or 1 (right)
 		self.patch_faces_ptr[face_index] = patch_face
+
+
+	def set_global_solve_matrices(self):
+
+		"""
+		Create the sub matrices that will be put into Lh for the 
+		global solve.
+
+		:return : N_k, P_kMin1
+			N_k = Matrix that multiplies phi_hat on the RHS
+			P_kMin1 = Matrix that multiplies phi_hat_min1 on the RHS (upwind flux)
+		"""
+
+		# Constant wave speed
+		beta = parameters.CONST_BETA
+
+		# Discretization Matrices
+		M_k_inv = self.M_J_inv  # Inverse of mass matrix (with jacobian)
+		S = None  # Stiffness matrix
+		F_1 = numpy.zeros((self.n, self.n))  # First numerical flux matrix
+		F_min1 = numpy.zeros((self.n, self.n))  # Second numerical flux matrix
+
+		# Stiffness Matrix
+		S = numpy.transpose(self.reference_element.mass_derivative_matrix_ref_domain)
+
+		# Numerical flux matrices.
+		# NOTE: Are symmetric so can optimize that here
+
+		basis_functions_ref_domain = self.reference_element.basis_ref_domain.basis_functions 
+
+		for i in range(self.n):
+			for j in range(self.n):
+				
+				# beta * phi_i(1) * phi_j(1):
+				beta_phi_i_phi_j_plus1 = beta * basis_functions_ref_domain[i](1.0) * basis_functions_ref_domain[j](1.0)   
+				
+				# beta * phi_i(-1) * phi_j(-1): 
+				beta_phi_i_phi_j_min1 = beta * basis_functions_ref_domain[i](-1.0) * basis_functions_ref_domain[j](1.0)    
+
+				F_1[i][j] = beta_phi_i_phi_j_plus1
+				F_min1[i][j] = beta_phi_i_phi_j_min1
+
+		N_k = beta * numpy.dot(M_k_inv, S) - numpy.dot(M_k_inv, F_1)
+		P_kMin1 = numpy.dot(M_k_inv, F_min1)
+
+		return N_k, P_kMin1
 
 
 class PatchFace(object):

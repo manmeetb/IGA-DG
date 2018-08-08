@@ -11,10 +11,10 @@ import math
 #           Patch Parameters
 # =======================================
 
-CONST_ML = 4 # The mesh level
-CONST_P = 3  # The order on each patch
+CONST_ML = 1 # The mesh level
+CONST_P = 6  # The order on each patch
 
-CONST_REFINEMENT_TYPE = "KNOT" # Patches / KNOT
+CONST_REFINEMENT_TYPE = "PATCHES" # Patches / KNOT
 CONST_NUM_PATCH_ML0 = 4  # The number of patches on the zeroth mesh level
 CONST_NUM_BASIS_ML0 = 6  # The number of basis functions on the zeroth mesh level
 
@@ -47,10 +47,10 @@ CONST_TAU = 0.0
 #          Flow Solve Parameters
 # =======================================
 
-CONST_NUM_TIME_STEPS = 1000
+CONST_NUM_TIME_STEPS = 1  # 1000
 CONST_DELTA_T = 0.0005
-CONST_TIME_STEP_METHOD = "EXPLICIT_RK4_LOW_STORAGE"  # Time Stepping Method: EULER/EXPLICIT_RK4_LOW_STORAGE
-
+CONST_TIME_STEP_METHOD = "EULER"  # Time Stepping Method: EULER/EXPLICIT_RK4_LOW_STORAGE
+CONST_SOLVER_TYPE = "GLOBAL"  # GLOBAL / STANDARD
 
 # =======================================
 #          Initial Condition
@@ -63,7 +63,7 @@ CONST_FUNCTION_IC = lambda x: math.sin(k_wave_number * 2 * math.pi * (x - CONST_
 # =======================================
 #            Post Processing
 # =======================================
-CONST_ERROR_OUTPUT_FILE_DIR= "Results/Convergence_Orders/Smoothed_Knots/Knot_Refinement"
+CONST_ERROR_OUTPUT_FILE_DIR= "Results/"
 CONST_NUM_PATCH_PLOT_PTS = 25
 CONST_OUTPUT_PLOT = True
 

@@ -13,6 +13,7 @@ import math
 import numpy
 import matplotlib.pyplot as plt
 import solve_explicit
+import solve_explicit_global
 import parameters
 import compute_error
 
@@ -68,10 +69,10 @@ def set_initial_condition(patches):
 		patch.set_initial_condition(parameters.CONST_FUNCTION_IC)
 
 
-def main():
+def simulate():
 
-	print "TEST: ML = %d, P = %d, NUM_PATCHES = %d " % (parameters.CONST_ML, parameters.CONST_P, 
-		parameters.CONST_NUM_PATCH)
+	print "ML = %d, P = %d, NUM_PATCHES = %d, NUM_BASIS = %d " % (parameters.CONST_ML, parameters.CONST_P, 
+		parameters.CONST_NUM_PATCH, parameters.CONST_NUM_BASIS)
 
 	# Generate the common reference element
 	print "Generate Reference Element"
@@ -91,7 +92,12 @@ def main():
 	set_initial_condition(patches)
 
 	# Solve the flow
-	solve_explicit.solve_explicit(patches, patch_faces)
+	if parameters.CONST_SOLVER_TYPE == "STANDARD":
+		solve_explicit.solve_explicit(patches, patch_faces)
+	elif parameters.CONST_SOLVER_TYPE == "GLOBAL":
+		solve_explicit_global.solve_explicit_global(patches, patch_faces)
+	else:
+		raise ValueError("Unknown Solver Type")
 
 	# Compute the error and output the error file
 	L2_error = compute_error.compute_L2_error(patches, parameters.CONST_FUNCTION_IC)
@@ -103,8 +109,72 @@ def main():
 		plotter.plot_numerical_solution(patches, plot_initial_condition=True)
 
 
+def study_stability_properties():
+
+	"""
+	Study the stability properties of the scheme
+	"""
+
+	# =================================
+	#          Preprocessing
+	# =================================
+
+	print "Generate Basis Functions"
+	b_spline_basis = basis.BSplineBasis(parameters.CONST_P, parameters.CONST_NUM_BASIS)
+	knots_smooth = b_spline_basis.get_smoothed_knots()
+	b_spline_basis_smooth = basis.BSplineBasis(parameters.CONST_P, parameters.CONST_NUM_BASIS, knots_smooth)
+
+	print "Generate Reference Element"
+	reference_element = element.ReferenceElement(b_spline_basis)
+	reference_element_smooth = element.ReferenceElement(b_spline_basis_smooth)
+
+	print "Generate Mesh"
+	patches, patch_faces = generate_mesh(reference_element)
+	patches_smooth, patch_faces_smooth = generate_mesh(reference_element_smooth)
+
+	print "Set Initial Condition"
+	set_initial_condition(patches)
+	set_initial_condition(patches_smooth)
+	
+	# =================================
+	#         Stability Study
+	# =================================
+
+	# Discretization matrix
+	Lh = solve_explicit_global.assemble_Lh(patches)
+	Lh_smooth = solve_explicit_global.assemble_Lh(patches_smooth)
+	
+	w,v = numpy.linalg.eig(Lh)
+	w_smooth, v_smooth = numpy.linalg.eig(Lh_smooth)
+
+	w_real = numpy.real(w)
+	w_imag = numpy.imag(w)
+
+	w_smooth_real = numpy.real(w_smooth)
+	w_smooth_imag = numpy.imag(w_smooth)
+
+	plt.figure(1)
+	plt.scatter(w_real, w_imag, c='b', label="Uniform Knots")
+	plt.scatter(w_smooth_real, w_smooth_imag, c='r', label="Smoothed Knots")
+	
+	plt.xlabel("Real")
+	plt.ylabel("Imaginary")
+	
+	plt.grid()
+	plt.legend()
+
+	plt.show(block=True)
+
+
+	# =================================
+	#          Postprocessing
+	# =================================
+
+
 if __name__ == "__main__":
-	main()
+	#simulate()
+	study_stability_properties()
+
 
 
 
