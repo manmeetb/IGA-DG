@@ -50,6 +50,8 @@ def perform_global_time_step(patches, patch_faces):
 
 	if parameters.CONST_TIME_STEP_METHOD == "EULER":
 		euler_global_time_step(patches, patch_faces)
+	elif parameters.CONST_TIME_STEP_METHOD == "EXPLICIT_RK4_LOW_STORAGE":
+		explicit_rk4_lowstorage_global_time_step(patches, patch_faces)
 
 
 def euler_global_time_step(patches, patch_faces):
@@ -71,6 +73,60 @@ def euler_global_time_step(patches, patch_faces):
 	# Update the modal coefficients
 	update_phi_hat_patches(patches, phi_hat_global_nPlus1)
 
+	# Check that solution is still bounded
+	if not check_solution_bounded(patches):
+		raise ValueError("NAN Solution Value")
+
+
+def explicit_rk4_lowstorage_global_time_step(patches, patch_faces):
+
+	"""
+	Perform an explicit, low storage, fourth order Runge Kutta time 
+	step to update the solution in time
+	"""
+
+	# Coefficients for the method
+	rk4a = [0.0,
+			-567301805773.0/1357537059087.0, 
+			-2404267990393.0/2016746695238.0,
+			-3550918686646.0/2091501179385.0, 
+			-1275806237668.0/842570457699.0]
+
+	rk4b = [1432997174477.0/9575080441755.0,
+			5161836677717.0/13612068292357.0, 
+			1720146321549.0/2090206949498.0,
+			3134564353537.0/4481467310338.0,  
+			2277821191437.0/14882151754819.0]
+
+	rk4c = [0.0,
+			1432997174477.0/9575080441755.0,
+			2526269341429.0/6820363962896.0,
+			2006345519317.0/3224310063776.0,
+			2802321613138.0/2924317926251.0]
+
+	delta_t = parameters.CONST_DELTA_T
+
+	# Set p0: p0 = u_n
+	for patch in patches:
+		patch.phi_hat_p = patch.phi_hat[:]
+
+	for rk in range(5):
+
+		# Assemmble the RHS of the ODE system
+		Lh = assemble_Lh(patches)
+		phi_hat_global_n = assemble_phi_hat(patches)
+		dphi_hat_global_n = numpy.dot(Lh, phi_hat_global_n)  # Global RHS
+
+		for patch in patches:
+			for i in range(patch.n):
+				patch.phi_hat_p[i] *= rk4a[rk]
+				patch.phi_hat_p[i] += delta_t * dphi_hat_global_n[patches.index(patch)*patch.n + i][0]
+				patch.phi_hat[i]   += rk4b[rk] * patch.phi_hat_p[i]
+
+	# Check that solution is still bounded
+	if not check_solution_bounded(patches):
+		raise ValueError("NAN Solution Value")
+
 
 def assemble_Lh(patches):
 
@@ -86,6 +142,7 @@ def assemble_Lh(patches):
 	for patch in patches:
 		size_Lh += patch.n
 
+	# The empty Lh matrix to be filled
 	Lh = numpy.zeros((size_Lh, size_Lh))
 
 	# Add in the entries into the Lh matrix. 
@@ -94,36 +151,32 @@ def assemble_Lh(patches):
 	for patch in patches:
 
 		patch_index = patches.index(patch)
-		n = patch.n
-		N_k = patch.N_k
-		P_kMin1 = patch.P_kMin1
+		n = patch.n  # size of each square matrix (n = number of modal coefficients)
 
-		# Fill the N_k matrix
-		for i in range(n):
-			for j in range(n):
-				
-				global_i = patch_index*n + i
-				global_j = patch_index*n + j
+		A_k, B_k, C_k = patch.A_k, patch.B_k, patch.C_k
 
-				Lh[global_i][global_j] = N_k[i][j]
+		# Get the ranges for slicing into Lh and setting the entries
+		
+		if patch_index == 0:
+			# Periodic BCs
+			A_i_range, A_j_range = [patch_index*n, (patch_index+1)*n], [(len(patches)-1)*n, (len(patches))*n]
+		else:
+			A_i_range, A_j_range = [patch_index*n, (patch_index+1)*n], [(patch_index-1)*n, (patch_index)*n]
+		
+		B_i_range, B_j_range = [patch_index*n, (patch_index+1)*n], [patch_index*n, (patch_index+1)*n]
 
+		if patch_index == len(patches)-1:
+			# Periodic BCs
+			C_i_range, C_j_range = [patch_index*n, (patch_index+1)*n], [(0)*n, (1)*n]
+		else:
+			C_i_range, C_j_range = [patch_index*n, (patch_index+1)*n], [(patch_index+1)*n, (patch_index+2)*n]
+	
 
-		# Fill the P_kMin1 matrix
-		for i in range(n):
-			for j in range(n):
+		# Fill the array with the data for this patch
+		Lh[A_i_range[0]:A_i_range[1], A_j_range[0]:A_j_range[1]] = A_k
+		Lh[B_i_range[0]:B_i_range[1], B_j_range[0]:B_j_range[1]] = B_k
+		Lh[C_i_range[0]:C_i_range[1], C_j_range[0]:C_j_range[1]] = C_k
 
-				if patch_index == 0:
-					
-					# Periodic BCs
-					global_i = (patch_index)*n + i
-					global_j = (len(patches)-1)*n + j
-
-				else:
-
-					global_i = (patch_index)*n + i
-					global_j = (patch_index-1)*n + j
-				
-				Lh[global_i][global_j] = P_kMin1[i][j]
 
 	return Lh
 
@@ -180,3 +233,17 @@ def update_phi_hat_patches(patches, phi_hat_global):
 
 		patch_index += 1
 
+
+def check_solution_bounded(patches):
+
+	"""
+	Check to see if the solution is bounded by seeing if 
+	none of the values are nan
+	"""
+
+	for patch in patches:
+		for  phi in patch.phi_hat:
+			if math.isnan(phi):
+				return False
+
+	return True

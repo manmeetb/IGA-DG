@@ -71,8 +71,8 @@ class Patch(object):
 		self.M_J_inv = numpy.linalg.inv(self.M_J_inv)
 
 
-		# Global solve Data structures
-		self.N_k, self.P_kMin1 = self.set_global_solve_matrices()
+		# Linear Advection Global Solve Data Structures
+		self.A_k, self.B_k, self.C_k = self.get_global_solve_RHS_matrices()
 
 
 	def set_initial_condition(self, function_ic):
@@ -217,50 +217,61 @@ class Patch(object):
 		self.patch_faces_ptr[face_index] = patch_face
 
 
-	def set_global_solve_matrices(self):
+	def get_global_solve_RHS_matrices(self):
 
 		"""
-		Create the sub matrices that will be put into Lh for the 
-		global solve.
+		Get the RHS matrices for the system of equations to get the 
+		deriative of the modal coefficients. That is, we are computing the 
+		matrices [A], [B] and [C] for:
 
-		:return : N_k, P_kMin1
-			N_k = Matrix that multiplies phi_hat on the RHS
-			P_kMin1 = Matrix that multiplies phi_hat_min1 on the RHS (upwind flux)
+			d/dt {phi_k} = [A] * {phi_k-1} + [B] * {phi_k} + [C] * {phi_k+1}
+
+		For now, these matrices are only for the linear advection equation
 		"""
 
-		# Constant wave speed
+		# Preprocessing
 		beta = parameters.CONST_BETA
+		tau = parameters.CONST_TAU
+		beta_tilde = abs(beta)/beta
 
-		# Discretization Matrices
-		M_k_inv = self.M_J_inv  # Inverse of mass matrix (with jacobian)
-		S = None  # Stiffness matrix
-		F_1 = numpy.zeros((self.n, self.n))  # First numerical flux matrix
-		F_min1 = numpy.zeros((self.n, self.n))  # Second numerical flux matrix
+		BPlus  = (1.0 + tau * beta_tilde)/2.0
+		BMinus = (1.0 - tau * beta_tilde)/2.0
+
 
 		# Stiffness Matrix
 		S = numpy.transpose(self.reference_element.mass_derivative_matrix_ref_domain)
+		MJ_k_inv = self.M_J_inv  # Inverse of mass matrix (with jacobian)
 
-		# Numerical flux matrices.
-		# NOTE: Are symmetric so can optimize that here
+		A_k = numpy.zeros((self.n, self.n))
+		B_k = numpy.zeros((self.n, self.n))
+		C_k = numpy.zeros((self.n, self.n))
 
-		basis_functions_ref_domain = self.reference_element.basis_ref_domain.basis_functions 
+
+		# Matrices that arise in the numerical flux:
+		# {F*} = [C1] * {phi_k} + [C2] * {phi_k+1} + [C3] * {phi_k-1}
+		C1 = numpy.zeros((self.n, self.n))
+		C2 = numpy.zeros((self.n, self.n))
+		C3 = numpy.zeros((self.n, self.n))
+
+		phi_hat = self.reference_element.basis_ref_domain.basis_functions  # Basis function (lambdas) on the reference domain
 
 		for i in range(self.n):
 			for j in range(self.n):
-				
-				# beta * phi_i(1) * phi_j(1):
-				beta_phi_i_phi_j_plus1 = beta * basis_functions_ref_domain[i](1.0) * basis_functions_ref_domain[j](1.0)   
-				
-				# beta * phi_i(-1) * phi_j(-1): 
-				beta_phi_i_phi_j_min1 = beta * basis_functions_ref_domain[i](-1.0) * basis_functions_ref_domain[j](1.0)    
 
-				F_1[i][j] = beta_phi_i_phi_j_plus1
-				F_min1[i][j] = beta_phi_i_phi_j_min1
+				C1[i][j] = beta * (BPlus*phi_hat[i](1.0)*phi_hat[j](1.0) - 
+									BMinus*phi_hat[i](-1.0)*phi_hat[j](-1.0))
 
-		N_k = beta * numpy.dot(M_k_inv, S) - numpy.dot(M_k_inv, F_1)
-		P_kMin1 = numpy.dot(M_k_inv, F_min1)
+				C2[i][j] = beta * (BMinus*phi_hat[i](1.0)*phi_hat[j](-1.0))
 
-		return N_k, P_kMin1
+				C3[i][j] = -1.0*beta * (BPlus*phi_hat[i](-1.0)*phi_hat[j](1.0))
+
+
+		# Compute discretization matrices [A], [B] and [C]
+		A_k = -1.0 * numpy.dot(MJ_k_inv, C3)
+		B_k = numpy.dot(MJ_k_inv, beta*S - C1)
+		C_k = -1.0 * numpy.dot(MJ_k_inv, C2)
+
+		return A_k, B_k, C_k
 
 
 class PatchFace(object):

@@ -27,7 +27,7 @@ CONST_ML_VALUES = [	[0, 1, 2, 3, 4],
 					[0, 1, 2, 3, 4],
 					[0, 1, 2, 3, 4],]
 
-CONST_ERROR_FOLDER_ABS_PATH = "/Users/manmeetbhabra/Documents/McGill/Research/IGA-DG/Results/Convergence_Orders/Smoothed_Knots/Knot_Refinement"
+CONST_ERROR_FOLDER_ABS_PATH = "/Users/manmeetbhabra/Documents/McGill/Research/IGA-DG/Results/Convergence_Orders_Global_Solve/Tau0.5/Patch_Refinement/Smoothed_Knots"
 CONST_TEST_CASE_PREFIX = "L2_Error" # Everything before the underscore before ml
 
 CONST_PLOT_TITLE = "L2 Error Convergence (Smoothed Knots, Knot Refinement)"
@@ -45,7 +45,7 @@ CONST_CURVE_COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
 class TestCaseP(object):
 		
-	"""
+	"""  
 	Holds the data related to the given test case. All mesh level
 	data for a given P value will be stored in this class
 	"""

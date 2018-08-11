@@ -9,10 +9,10 @@ values in the parameters.py module. Probably not the best way to do this since
 these values in parameters.py should be constants
 """
 
-CONST_CONVERGENCE_TEST_P_VALUES = [3]
-CONST_CONVERGENCE_TEST_ML_VALUES = [4]
+CONST_CONVERGENCE_TEST_P_VALUES = [1,2,3]
+CONST_CONVERGENCE_TEST_ML_VALUES = [0,1,2,3,4]
 
-REFINEMENT_TYPE = "KNOT"  # KNOT/PATCHES
+REFINEMENT_TYPE = "PATCHES"  # KNOT/PATCHES
 
 import parameters
 import simulation
