@@ -9,7 +9,6 @@ Generates the mesh for the given case
 import parameters
 import patch
 
-
 def generate_mesh(reference_element):
 
 	"""

@@ -20,7 +20,7 @@ CONST_NUM_BASIS_ML0 = 6  # The number of basis functions on the zeroth mesh leve
 
 if CONST_REFINEMENT_TYPE == "PATCHES":
 	CONST_NUM_PATCH = CONST_NUM_PATCH_ML0 * (2**(CONST_ML))  # The number of patches
-	CONST_NUM_BASIS = 9
+	CONST_NUM_BASIS = 8
 elif CONST_REFINEMENT_TYPE == "KNOT":
 	CONST_NUM_PATCH = 2
 	CONST_NUM_BASIS = CONST_NUM_BASIS_ML0 * (2**(CONST_ML))  # The number of basis functions on each patch
@@ -40,7 +40,7 @@ CONST_X_RANGE = [0, 1]  # The 1D physical domain
 # =======================================
 
 CONST_BETA = 1.0
-CONST_TAU = 1.0  # 1.0 = upwind flux, 0.0 = central flux
+CONST_TAU = 0.0  # 1.0 = upwind flux, 0.0 = central flux
 
 
 # =======================================
