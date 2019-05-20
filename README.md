@@ -1,4 +1,2 @@
 # IGA-DG
-An Discontinuous Galerkin Flow Solver that incorporates IGA
-
-This flow solver has been coded in C++
+A Multipatch Discontinuous Galerkin IGA (Isogeometric Analysis) Solver for Wave Propagation
